@@ -1,5 +1,24 @@
 # Mock Zoom API
 
+hosts={
+   "14FZQXqLRSODS33uQTVVaw":["Zoom 1",1111],
+   "5uBBBmxkRs2ULd5cfs8Adw":["Zoom 2",22222],
+   "atAAAIDOQYqcONrWd0oxxg":["Zoom 3",33333],
+   "dZ6K_rnJTOO5S-jOUpXf3w":["Zoom 4",44444],
+   "j4IclWA4ScOUmP_grnbflg":["Zoom 5",55555],
+}
+
+def get_zoom_name(host_id):
+    if host_id in hosts:
+        return hosts[host_id][0]
+    return host_id
+
+def get_zoom_code(host_id):
+    if host_id in hosts:
+        return hosts[host_id][1]
+    print(f"Cannot find host-id {host_id} and the return value is {-1*int(host_id)}")
+    return -1*int(host_id)
+
 def get_scheduled_zoom_api_response():
     resp = {
         "upcoming": {
@@ -276,8 +295,20 @@ def get_current_zoom_api_response():
                             "duration": 60,
                             "timezone": "America/Los_Angeles",
                             "created_at": "2024-03-16T17:13:01Z",
-                            "join_url": "https://XXXXXus02web.zoom.us/j/XXXXXXX86050250486?pwd=XXXXXXXUWZHb0lDeUwxOXJrTlBwZHd6dXBkdz09"
-                        }
+                            "join_url": "https://XXXXXus02web.zoom.us/j/86050250486?pwd=UWZHb0lDeUwxOXJrTlBwZHd6dXBkdz09"
+                        },
+                        {
+                            "uuid": "E2g2gTUSSCKG0aum3TZXbg==",
+                            "id": 89488533682,
+                            "host_id": "14FZQXqLRSODS33uQTVVaw",
+                            "topic": "1:1 Neel Dhuruva",
+                            "type": 8,
+                            "start_time": "2024-06-20T22:00:00Z",
+                            "duration": 60,
+                            "timezone": "America/Los_Angeles",
+                            "created_at": "2023-12-28T06:22:16Z",
+                            "join_url": "https://XXXXXXus02web.zoom.us/j/89488533682?pwd=VzJBcjJCaGxpVWFESmpaOGlTNUovUT09"
+                        },
                     ],
                     "total_sessions": 1
                 }
@@ -287,7 +318,12 @@ def get_current_zoom_api_response():
 
 def get_current_sessions():
   zoom_sessions=get_current_zoom_api_response()
-  return zoom_sessions['live']['sessions']
+  sessions = zoom_sessions['live']['sessions']
+  response=f"We currently have {len(sessions)} live sessions.\n"
+  for s in sessions:
+     response+=f"* Title: {s['topic']}, User: {get_zoom_name(s['host_id'])}, URL: {s['join_url']}\n"
+  response += "\n\nPlease join the appropriate session using the join_url provided."
+  return response
 
 def get_scheduled_sessions():
   zoom_sessions=get_scheduled_zoom_api_response()
@@ -297,5 +333,5 @@ def get_scheduled_sessions():
   resp = [ f"uuid = {s['uuid']}, host_id= {s['host_id']}, topic = {s['topic']}, join_url = {s['join_url']}" for s in sess]
   return resp
 
-def get_host_code(userid):
-  return 12345;
+def get_host_code(host_id):
+  return get_zoom_code(host_id)

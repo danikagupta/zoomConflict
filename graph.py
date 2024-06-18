@@ -88,9 +88,9 @@ class zoomHandler():
 
     def provideLiveSchedule(self, state: AgentState):
         print(f"START: provideLiveSchedule")
-        responseToUser= get_scheduled_zoom_api_response()
-        responseToUser= get_current_zoom_api_response()
-        print(f"END: provideLiveSchedule")
+        #responseToUser= get_scheduled_sessions()
+        responseToUser= get_current_sessions()
+        print(f"END: provideLiveSchedule with response: {responseToUser}")
         return {
             'lnode':'provide_live_schedule',
             'responseToUser':responseToUser
