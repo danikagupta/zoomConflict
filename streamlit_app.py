@@ -49,17 +49,17 @@ class zoomHandler():
         builder = StateGraph(AgentState)
         builder.add_node('front_end',self.frontEnd)
         builder.add_node('provide_live_schedule',self.provideLiveSchedule)
-        builder.add_node('provide_day_schedule',self.provideDaySchedule)
+        builder.add_node('provide_zoom_code',self.provideZoomCode)
         builder.add_node('provide_zoom_link',self.provideZoomLink)
 
         builder.set_entry_point('front_end')
         builder.add_conditional_edges('front_end',self.main_router,
                                       {END:END, 
                                        "provide_live_schedule":"provide_live_schedule", 
-                                       "provide_day_schedule":"provide_day_schedule", 
+                                       "provide_zoom_code":"provide_zoom_code", 
                                        "provide_zoom_link":"provide_zoom_link"})
         builder.add_edge('provide_live_schedule',END)
-        builder.add_edge('provide_day_schedule',END)
+        builder.add_edge('provide_zoom_code',END)
         builder.add_edge('provide_zoom_link',END)
         memory = SqliteSaver(conn=sqlite3.connect(":memory:", check_same_thread=False))
         self.graph = builder.compile(
@@ -90,6 +90,7 @@ class zoomHandler():
 
     def provideLiveSchedule(self, state: AgentState):
         print(f"START: provideLiveSchedule")
+        responseToUser= get_scheduled_zoom_api_response()
         responseToUser= get_current_zoom_api_response()
         print(f"END: provideLiveSchedule")
         return {
@@ -97,18 +98,22 @@ class zoomHandler():
             'responseToUser':responseToUser
         }
 
-    def provideDaySchedule(self, state: AgentState):
-        print(f"START: {__name__}")
-        print(f"END: {__name__}")
+    def provideZoomCode(self, state: AgentState):
+        print(f"START: provideZoomCode")
+        responseToUser= get_host_code(1)
+        print(f"END: provideZoomCode")
         return {
             'lnode':'provide_day_schedule',
+            'responseToUser':responseToUser
         }
 
     def provideZoomLink(self, state: AgentState):
         print(f"START: provideZoomLink")
+        responseToUser= "Sorry. I do not have the ability to create Zoom links yet. Please wait for a human to respond."
         print(f"END: provideZoomLink")
         return {
             'lnode':'provide_zoom_link',
+            'responseToUser':responseToUser
         }
 
     def main_router(self, state: AgentState):
@@ -116,7 +121,7 @@ class zoomHandler():
         if state['category'] == 'Conflict':
             return "provide_live_schedule"
         elif state['category'] == 'Cancel':
-            return "provide_day_schedule"
+            return "provide_zoom_code"
         elif state['category'] == 'Create':
             return "provide_zoom_link"
         elif state['category'] == 'Other':
@@ -154,9 +159,9 @@ def start_chat():
             #st.write(s)
             for k,v in s.items():
                 print(f"Key: {k}, Value: {v}")
-                if v.get("responseToUser"):
+                if resp := v.get("responseToUser"):
                     with st.chat_message("assistant", avatar=avatars["assistant"]):
-                        st.write(v.responseToUser)
+                        st.write(resp)
                 #st.write(s)
                 #full_response = "This should be replaced by the real response from the Graph..."
                 #st.markdown(full_response)
