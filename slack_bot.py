@@ -4,7 +4,7 @@ from slack_bolt.adapter.socket_mode import SocketModeHandler
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 
-from google.colab import userdata
+#from google.colab import userdata
 
 bot_token = userdata.get("SLACK_BOT_TOKEN")
 app_token = userdata.get("SLACK_APP_TOKEN")
