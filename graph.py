@@ -97,8 +97,8 @@ class zoomHandler():
             SystemMessage(content=my_prompt),
             HumanMessage(content=state['initialMsg']),
         ]).category
-        print(f"Category: {category}")
-        print(f"END: frontEnd")
+        #print(f"Category: {category}")
+        #print(f"END: frontEnd")
         return {
             'lnode':'front_end',
             'category':category        
@@ -142,7 +142,7 @@ class zoomHandler():
         #
         #
 
-        print(f"END: provideLiveSchedule with response: {responseToUser}")
+        #print(f"END: provideLiveSchedule with response: {responseToUser}")
         return {
             'lnode':'provide_live_schedule',
             'responseToUser':responseToUser
@@ -155,11 +155,14 @@ class zoomHandler():
         my_prompt=f"""
                 Please try to match the user's request to one of the running sessions.
                 {currentSchedule}
-                Please also see the Zoom table for the cancel codes. {zoom_table}
+                If there is no good match, return -10 as the cancel code and we will ask user for more information.
+
+                If there is a good match, then check the Zoom table for the cancel codes. {zoom_table}
                 Respond with the Code of the matching session only if there is a good match.
                 Else return the Code as -100 and we will ask the user for more information.
+
                 Please take a step-by-step approach. 
-                First find the matching Host, then find the matching code.
+                First find the matching Host, then find the matching code only if the host is well-matched.
             """
         llm_response=self.model.with_structured_output(CancelCode).invoke([
             SystemMessage(content=my_prompt),
@@ -167,7 +170,7 @@ class zoomHandler():
         ])
         print(f"LLM Response: {llm_response}")
         cancel_code=int(llm_response.code)
-        if(cancel_code==-100):
+        if(cancel_code<0):
             responseToUser= """
             I am sorry. I could not find a match. Please provide more specifics about the session you want to cancel.\n\n
             For example, you can say: 'I want to cancel the session with the title "1:1 Maya Deren"
@@ -175,7 +178,7 @@ class zoomHandler():
         else:
             responseToUser= f"Please use the Host Key {cancel_code}."
 
-        print(f"END: provideCancelCode")
+        #print(f"END: provideCancelCode")
         return {
             'lnode':'provide_day_schedule',
             'responseToUser':responseToUser
@@ -184,7 +187,7 @@ class zoomHandler():
     def provideZoomLink(self, state: AgentState):
         print(f"START: provideZoomLink")
         responseToUser= "Sorry. I do not have the ability to create Zoom links yet. Please wait for a human to respond."
-        print(f"END: provideZoomLink")
+        #print(f"END: provideZoomLink")
         return {
 
             'lnode':'provide_zoom_link',
@@ -192,7 +195,7 @@ class zoomHandler():
         }
 
     def main_router(self, state: AgentState):
-        print(f"START: mainRouter with msg {state['initialMsg']} and category {state['category']}")
+        print(f"\n\nSTART: mainRouter with msg {state['initialMsg']} and category {state['category']}")
         if state['category'] == 'Conflict':
             return "provide_live_schedule"
         elif state['category'] == 'Cancel':
