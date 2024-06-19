@@ -32,6 +32,11 @@ class Category(BaseModel):
 
 class ZoomSession(BaseModel):
     login: str
+
+
+class TitleURL(BaseModel):
+    title: str
+    url: str
 #
 # Only used for streaming. We dont need this.
 #
@@ -98,7 +103,7 @@ class zoomHandler():
         print(f"START: provideLiveSchedule")
         daySchedule= get_scheduled_sessions()
         # print(f"\n\n\n******\nDay Schedule: {daySchedule}\n******\n\n\n")
-        currentSchedule= get_current_sessions()
+
         my_prompt=f"""
                 Please try to match the user's request to one of the scheduled sessions.
                 {daySchedule}
@@ -109,10 +114,29 @@ class zoomHandler():
             HumanMessage(content=state['initialMsg']),
         ])
         print(f"\n\n\nLLM Response: {llm_response}\n\n\n")
+        currentSchedule= get_current_sessions()
+        if login := llm_response.login:
+            print(f"Login: {login}")
+            my_second_prompt=f"""
+                Please try to match the login {login} to one of the running sessions.
+                {currentSchedule}
+                Respond with the Title and URL of the best matching session(s).
+            """
+            llm_second_response=self.model.with_structured_output(TitleURL).invoke([
+                SystemMessage(content=my_second_prompt),
+                HumanMessage(content=state['initialMsg']),
+            ])
+            print(f"\n\n\nLLM 2nd Response: {llm_second_response}\n\n\n")
+            if title := llm_second_response.title:
+                responseToUser= f"{currentSchedule}.\n\nI believe your conflict is with {title}\n\nPlease join this session using {llm_second_response.url}."
+            else:
+                responseToUser= f"{currentSchedule}.\n\nI believe your issue is with Account {login}\n\nPlease join this session using the join_url provided."
+        else:
+            responseToUser= f"{currentSchedule}.\n\n\nPlease look through this list and join the appropriate session using the join_url provided."
         #
         #
         #
-        responseToUser= f"{currentSchedule}.\n\n{llm_response}\n\nPlease join the appropriate session using the join_url provided."
+
         print(f"END: provideLiveSchedule with response: {responseToUser}")
         return {
             'lnode':'provide_live_schedule',
