@@ -321,7 +321,7 @@ def get_current_sessions():
   sessions = zoom_sessions['live']['sessions']
   response=f"We currently have {len(sessions)} live sessions.\n"
   for s in sessions:
-     response+=f"* Title: {s['topic']}, ZoomAccount: {get_zoom_name(s['host_id'])}, URL: {s['join_url']}\n"
+     response+=f"* Title: {s['topic']}, Host: {get_zoom_name(s['host_id'])}, URL: {s['join_url']}\n"
   return response
 
 def get_scheduled_sessions():
@@ -337,3 +337,9 @@ def get_scheduled_sessions():
 
 def get_host_code(host_id):
   return get_zoom_code(host_id)
+
+def get_zoom_table():
+  response = "\n Zoom Cancel Codes are:\n"
+  for k,v in hosts.items():
+    response+=f"Host: {v[0]}, Code: {v[1]}\n"
+  return response+"\n\n"

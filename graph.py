@@ -33,6 +33,9 @@ class Category(BaseModel):
 class ZoomSession(BaseModel):
     login: str
 
+class CancelCode(BaseModel):
+    code: int
+
 
 class TitleURL(BaseModel):
     title: str
@@ -60,24 +63,24 @@ class zoomHandler():
         builder = StateGraph(AgentState)
         builder.add_node('front_end',self.frontEnd)
         builder.add_node('provide_live_schedule',self.provideLiveSchedule)
-        builder.add_node('provide_zoom_code',self.provideZoomCode)
+        builder.add_node('provide_cancel_code',self.provideCancelCode)
         builder.add_node('provide_zoom_link',self.provideZoomLink)
 
         builder.set_entry_point('front_end')
         builder.add_conditional_edges('front_end',self.main_router,
                                       {END:END, 
                                        "provide_live_schedule":"provide_live_schedule", 
-                                       "provide_zoom_code":"provide_zoom_code", 
+                                       "provide_cancel_code":"provide_cancel_code", 
                                        "provide_zoom_link":"provide_zoom_link"})
         builder.add_edge('provide_live_schedule',END)
-        builder.add_edge('provide_zoom_code',END)
+        builder.add_edge('provide_cancel_code',END)
         builder.add_edge('provide_zoom_link',END)
         memory = SqliteSaver(conn=sqlite3.connect(":memory:", check_same_thread=False))
         self.graph = builder.compile(
             checkpointer=memory,
             # interrupt_after=['planner', 'generate', 'reflect', 'research_plan', 'research_critique']
         )
-        print("Completed zoomHandler init")
+        # print("Completed zoomHandler init")
 
     def frontEnd(self, state: AgentState):
         print(f"START: frontEnd")
@@ -85,6 +88,8 @@ class zoomHandler():
                 Please classify the user's request.
                 If the user is unable to join a Zoom session due to a conflict, category is 'Conflict'
                 If the user wants you to cancel an existing Zoom session, category is 'Cancel'
+                If the user expresses inability to stop a Zoom session, category is 'Cancel'
+                If the user expresses the need to stop a Zoom session, category is 'Cancel'
                 If the user wants you to create a new Zoom session, category is 'Create'
                 Else the category is 'Other'
                 """
@@ -113,7 +118,7 @@ class zoomHandler():
             SystemMessage(content=my_prompt),
             HumanMessage(content=state['initialMsg']),
         ])
-        print(f"\n\n\nLLM Response: {llm_response}\n\n\n")
+        # print(f"\n\n\nLLM Response: {llm_response}\n\n\n")
         currentSchedule= get_current_sessions()
         if login := llm_response.login:
             print(f"Login: {login}")
@@ -126,11 +131,11 @@ class zoomHandler():
                 SystemMessage(content=my_second_prompt),
                 HumanMessage(content=state['initialMsg']),
             ])
-            print(f"\n\n\nLLM 2nd Response: {llm_second_response}\n\n\n")
+            # print(f"\n\n\nLLM 2nd Response: {llm_second_response}\n\n\n")
             if title := llm_second_response.title:
                 responseToUser= f"{currentSchedule}.\n\nI believe your conflict is with {title}\n\nPlease join this session using {llm_second_response.url}."
             else:
-                responseToUser= f"{currentSchedule}.\n\nI believe your issue is with Account {login}\n\nPlease join this session using the join_url provided."
+                responseToUser= f"{currentSchedule}.\n\nI believe your issue is with Account {login}\n\nCan you please check through the current sessions to figure out the conflict."
         else:
             responseToUser= f"{currentSchedule}.\n\n\nPlease look through this list and join the appropriate session using the join_url provided."
         #
@@ -143,10 +148,34 @@ class zoomHandler():
             'responseToUser':responseToUser
         }
 
-    def provideZoomCode(self, state: AgentState):
-        print(f"START: provideZoomCode")
-        responseToUser= get_host_code(1)
-        print(f"END: provideZoomCode")
+    def provideCancelCode(self, state: AgentState):
+        print(f"START: provideCancelCode with msg {state['initialMsg']}")
+        currentSchedule= get_current_sessions()
+        zoom_table = get_zoom_table()
+        my_prompt=f"""
+                Please try to match the user's request to one of the running sessions.
+                {currentSchedule}
+                Please also see the Zoom table for the cancel codes. {zoom_table}
+                Respond with the Code of the matching session only if there is a good match.
+                Else return the Code as -100 and we will ask the user for more information.
+                Please take a step-by-step approach. 
+                First find the matching Host, then find the matching code.
+            """
+        llm_response=self.model.with_structured_output(CancelCode).invoke([
+            SystemMessage(content=my_prompt),
+            HumanMessage(content=state['initialMsg']),
+        ])
+        print(f"LLM Response: {llm_response}")
+        cancel_code=int(llm_response.code)
+        if(cancel_code==-100):
+            responseToUser= """
+            I am sorry. I could not find a match. Please provide more specifics about the session you want to cancel.\n\n
+            For example, you can say: 'I want to cancel the session with the title "1:1 Maya Deren"
+            """
+        else:
+            responseToUser= f"Please use the Host Key {cancel_code}."
+
+        print(f"END: provideCancelCode")
         return {
             'lnode':'provide_day_schedule',
             'responseToUser':responseToUser
@@ -157,6 +186,7 @@ class zoomHandler():
         responseToUser= "Sorry. I do not have the ability to create Zoom links yet. Please wait for a human to respond."
         print(f"END: provideZoomLink")
         return {
+
             'lnode':'provide_zoom_link',
             'responseToUser':responseToUser
         }
@@ -166,7 +196,7 @@ class zoomHandler():
         if state['category'] == 'Conflict':
             return "provide_live_schedule"
         elif state['category'] == 'Cancel':
-            return "provide_zoom_code"
+            return "provide_cancel_code"
         elif state['category'] == 'Create':
             return "provide_zoom_link"
         elif state['category'] == 'Other':
