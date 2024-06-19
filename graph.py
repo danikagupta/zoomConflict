@@ -68,7 +68,7 @@ class zoomHandler():
         builder = StateGraph(AgentState)
         builder.add_node('front_end',self.frontEnd)
         builder.add_node('provide_live_schedule',self.provideLiveSchedule)
-        builder.add_node('provideMatchingSession',self.provideMatchingSession)
+        builder.add_node('provide_matching_session',self.provideMatchingSession)
         builder.add_node('provide_cancel_code',self.provideCancelCode)
         builder.add_node('provide_zoom_link',self.provideZoomLink)
 
@@ -81,8 +81,9 @@ class zoomHandler():
         #builder.add_edge('provide_live_schedule',END)
         builder.add_conditional_edges('provide_live_schedule',self.second_router,
                                         {END:END, 
-                                         "login_present":"provideMatchingSession", 
+                                         "login_present":"provide_matching_session", 
                                          "login_absent":END})
+        builder.add_edge('provide_matching_session',END)
         builder.add_edge('provide_cancel_code',END)
         builder.add_edge('provide_zoom_link',END)
         memory = SqliteSaver(conn=sqlite3.connect(":memory:", check_same_thread=False))
@@ -90,7 +91,8 @@ class zoomHandler():
             checkpointer=memory,
             # interrupt_after=['planner', 'generate', 'reflect', 'research_plan', 'research_critique']
         )
-        # print("Completed zoomHandler init")
+        png=self.graph.get_graph().draw_png('graph.png')
+        print("Completed zoomHandler init")
 
     def frontEnd(self, state: AgentState):
         print(f"START: frontEnd")

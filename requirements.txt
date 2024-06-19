@@ -11,3 +11,6 @@ langchain-core
 langgraph
 
 langchain_openai
+
+graphviz
+pygraphviz
