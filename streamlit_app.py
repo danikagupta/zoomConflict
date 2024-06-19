@@ -1,5 +1,11 @@
 import streamlit as st
+import os
 from graph import zoomHandler
+
+
+os.environ["LANGCHAIN_TRACING_V2"]="true"
+os.environ["LANGCHAIN_API_KEY"]=st.secrets['LANGSMITH_API_KEY']
+os.environ["LANGSMITH_API_KEY"]=st.secrets['LANGSMITH_API_KEY']
 
 DEBUGGING=0
 

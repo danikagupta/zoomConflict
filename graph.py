@@ -12,6 +12,9 @@ import sqlite3
 
 from zoom_api import *
 
+import os
+
+
 #
 # State of the graph. All information preserved as we walk through.
 #
@@ -21,9 +24,14 @@ class AgentState(TypedDict):
     lnode: str
     initialMsg: str
     responseToUser: str
-
+#
+# Classes for structured responses from LLM
+#
 class Category(BaseModel):
     category: str
+
+class ZoomSession(BaseModel):
+    login: str
 #
 # Only used for streaming. We dont need this.
 #
@@ -88,8 +96,23 @@ class zoomHandler():
 
     def provideLiveSchedule(self, state: AgentState):
         print(f"START: provideLiveSchedule")
-        #responseToUser= get_scheduled_sessions()
-        responseToUser= get_current_sessions()
+        daySchedule= get_scheduled_sessions()
+        # print(f"\n\n\n******\nDay Schedule: {daySchedule}\n******\n\n\n")
+        currentSchedule= get_current_sessions()
+        my_prompt=f"""
+                Please try to match the user's request to one of the scheduled sessions.
+                {daySchedule}
+                Respond with the login of the best matching session(s).
+                """
+        llm_response=self.model.with_structured_output(ZoomSession).invoke([
+            SystemMessage(content=my_prompt),
+            HumanMessage(content=state['initialMsg']),
+        ])
+        print(f"\n\n\nLLM Response: {llm_response}\n\n\n")
+        #
+        #
+        #
+        responseToUser= f"{currentSchedule}.\n\n{llm_response}\n\nPlease join the appropriate session using the join_url provided."
         print(f"END: provideLiveSchedule with response: {responseToUser}")
         return {
             'lnode':'provide_live_schedule',

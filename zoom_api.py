@@ -321,8 +321,7 @@ def get_current_sessions():
   sessions = zoom_sessions['live']['sessions']
   response=f"We currently have {len(sessions)} live sessions.\n"
   for s in sessions:
-     response+=f"* Title: {s['topic']}, User: {get_zoom_name(s['host_id'])}, URL: {s['join_url']}\n"
-  response += "\n\nPlease join the appropriate session using the join_url provided."
+     response+=f"* Title: {s['topic']}, ZoomAccount: {get_zoom_name(s['host_id'])}, URL: {s['join_url']}\n"
   return response
 
 def get_scheduled_sessions():
@@ -330,7 +329,10 @@ def get_scheduled_sessions():
   print(f"Scheduled sessions. Zoom-sessions = {zoom_sessions}")
   sess = zoom_sessions['upcoming']['sessions']
   print(f"Sessions: {sess}")
-  resp = [ f"uuid = {s['uuid']}, host_id= {s['host_id']}, topic = {s['topic']}, join_url = {s['join_url']}" for s in sess]
+  resp = "Scheduled sessions:\n"
+  for s in sess:
+    resp+=f"Title = {s['topic']}, Login = {get_zoom_name(s['host_id'])}\n"
+  #resp = str([f"User = {get_zoom_name(s['host_id'])}, Title = {s['topic']}\n" for s in sess])
   return resp
 
 def get_host_code(host_id):
