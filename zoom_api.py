@@ -16,7 +16,7 @@ def get_zoom_name(host_id):
 def get_zoom_code(host_id):
     if host_id in hosts:
         return hosts[host_id][1]
-    print(f"Cannot find host-id {host_id} and the return value is {-1*int(host_id)}")
+    print(f"Error in get_zoom_code: Cannot find host-id {host_id} and the return value is {-1*int(host_id)}")
     return -1*int(host_id)
 
 def get_scheduled_zoom_api_response():
@@ -38,7 +38,7 @@ def get_scheduled_zoom_api_response():
                         {
                             "uuid": "jkpzjGxuRZ6m3KDUuxciJQ==",
                             "id": 82342598986,
-                            "host_id": "14FZQXqLRSODS33uQTVVaw",
+                            "host_id": "5uBBBmxkRs2ULd5cfs8Adw",
                             "topic": "SC_M1_06_17_24_Ms. Neeta A.N",
                             "type": 8,
                             "start_time": "2024-06-17T16:30:00Z",
@@ -50,7 +50,7 @@ def get_scheduled_zoom_api_response():
                         {
                             "uuid": "5AoQq/vjQhC8Pco0Np2vBQ==",
                             "id": 88675950630,
-                            "host_id": "14FZQXqLRSODS33uQTVVaw",
+                            "host_id": "5uBBBmxkRs2ULd5cfs8Adw",
                             "topic": " AI/ML training for Trane Cohort 1",
                             "type": 8,
                             "start_time": "2024-06-17T18:30:00Z",
@@ -86,7 +86,7 @@ def get_scheduled_zoom_api_response():
                         {
                             "uuid": "QWYGRQ9WToSuK2Pm/5o8lQ==",
                             "id": 86282797155,
-                            "host_id": "14FZQXqLRSODS33uQTVVaw",
+                            "host_id": "dZ6K_rnJTOO5S-jOUpXf3w",
                             "topic": "1:1 Anisha",
                             "type": 8,
                             "start_time": "2024-06-18T00:00:00Z",
@@ -98,7 +98,7 @@ def get_scheduled_zoom_api_response():
                         {
                             "uuid": "DMiKJdC9SOiSE3S9eaSCPw==",
                             "id": 89465161555,
-                            "host_id": "14FZQXqLRSODS33uQTVVaw",
+                            "host_id": "dZ6K_rnJTOO5S-jOUpXf3w",
                             "topic": "1:1 Emmett Chen",
                             "type": 8,
                             "start_time": "2024-06-18T03:45:00Z",
@@ -326,9 +326,9 @@ def get_current_sessions():
 
 def get_scheduled_sessions():
   zoom_sessions=get_scheduled_zoom_api_response()
-  print(f"Scheduled sessions. Zoom-sessions = {zoom_sessions}")
+  #print(f"Scheduled sessions. Zoom-sessions = {zoom_sessions}")
   sess = zoom_sessions['upcoming']['sessions']
-  print(f"Sessions: {sess}")
+  #print(f"Sessions: {sess}")
   resp = "Scheduled sessions:\n"
   for s in sess:
     resp+=f"Title = {s['topic']}, Login = {get_zoom_name(s['host_id'])}\n"
