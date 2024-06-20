@@ -11,6 +11,7 @@ from langchain_core.pydantic_v1 import BaseModel
 import sqlite3
 
 from zoom_api import *
+from student_db import *
 
 import os
 
@@ -40,10 +41,18 @@ class ZoomSession(BaseModel):
 class CancelCode(BaseModel):
     code: int
 
-
 class TitleURL(BaseModel):
     title: str
     url: str
+
+
+class Email(BaseModel):
+    to: str
+    subject: str
+    student: str
+    body: str
+
+
 #
 # Only used for streaming. We dont need this.
 #
@@ -71,13 +80,15 @@ class zoomHandler():
         builder.add_node('provide_matching_session',self.provideMatchingSession)
         builder.add_node('provide_cancel_code',self.provideCancelCode)
         builder.add_node('provide_zoom_link',self.provideZoomLink)
+        builder.add_node('create_reminder',self.createReminder)
 
         builder.set_entry_point('front_end')
         builder.add_conditional_edges('front_end',self.main_router,
-                                      {END:END, 
-                                       "provide_live_schedule":"provide_live_schedule", 
-                                       "provide_cancel_code":"provide_cancel_code", 
-                                       "provide_zoom_link":"provide_zoom_link"})
+                                      {"Other":END, 
+                                       "Conflict":"provide_live_schedule", 
+                                       "Cancel":"provide_cancel_code", 
+                                       "Create":"provide_zoom_link",
+                                       "Remind":"create_reminder",})
         #builder.add_edge('provide_live_schedule',END)
         builder.add_conditional_edges('provide_live_schedule',self.second_router,
                                         {END:END, 
@@ -86,6 +97,7 @@ class zoomHandler():
         builder.add_edge('provide_matching_session',END)
         builder.add_edge('provide_cancel_code',END)
         builder.add_edge('provide_zoom_link',END)
+        builder.add_edge('create_reminder',END)
         memory = SqliteSaver(conn=sqlite3.connect(":memory:", check_same_thread=False))
         self.graph = builder.compile(
             checkpointer=memory,
@@ -98,6 +110,7 @@ class zoomHandler():
         print(f"START: frontEnd")
         my_prompt=f"""
                 Please classify the user's request.
+                If a student hasnt joined the session, category is 'Remind'
                 If the user is unable to join a Zoom session due to a conflict, category is 'Conflict'
                 If the user wants you to cancel an existing Zoom session, category is 'Cancel'
                 If the user expresses inability to stop a Zoom session, category is 'Cancel'
@@ -119,14 +132,16 @@ class zoomHandler():
     def main_router(self, state: AgentState):
         print(f"\n\nSTART: mainRouter with msg {state['initialMsg']} and category {state['category']}")
         if state['category'] == 'Conflict':
-            return "provide_live_schedule"
+            return "Conflict"
         elif state['category'] == 'Cancel':
-            return "provide_cancel_code"
+            return "Cancel"
         elif state['category'] == 'Create':
-            return "provide_zoom_link"
+            return "Create"
+        elif state['category'] == 'Remind':
+            return "Remind"
         elif state['category'] == 'Other':
             print(f"Content not relevant to Zoom. Ignoring. {state['initialMsg']}")
-            return END
+            return 'Other'
         else:
             print(f"Unknown category {state['category']}")
             return END
@@ -185,18 +200,18 @@ class zoomHandler():
         login=state['login']
         currentSchedule=state['currentSchedule']
         print(f"Login: {login}")
-        my_second_prompt=f"""
+        my_prompt=f"""
             Please try to match the login {login} to one of the running sessions.
             {currentSchedule}
             Respond with the Title and URL of the best matching session(s).
         """
-        llm_second_response=self.model.with_structured_output(TitleURL).invoke([
-            SystemMessage(content=my_second_prompt),
+        llm_response=self.model.with_structured_output(TitleURL).invoke([
+            SystemMessage(content=my_prompt),
             HumanMessage(content=state['initialMsg']),
         ])
         # print(f"\n\n\nLLM 2nd Response: {llm_second_response}\n\n\n")
-        if title := llm_second_response.title:
-            responseToUser= f"{currentSchedule}.\n\nI believe your conflict is with {title}\n\nPlease join this session using {llm_second_response.url}."
+        if title := llm_response.title:
+            responseToUser= f"{currentSchedule}.\n\nI believe your conflict is with {title}\n\nPlease join this session using {llm_response.url}."
         else:
             responseToUser= f"{currentSchedule}.\n\nI believe your issue is with Account {login}\n\nCan you please check through the current sessions to figure out the conflict."
         return {
@@ -247,6 +262,44 @@ class zoomHandler():
         return {
 
             'lnode':'provide_zoom_link',
+            'responseToUser':responseToUser
+        }
+    
+
+    def createReminder(self, state: AgentState):
+        print(f"START: createReminder")
+        currentStudentList= get_current_student_list()
+        my_prompt=f"""
+                Please check if the user's request matches exactly one of the students in this list.
+                {currentStudentList}
+                If so, respond with the Email template including "To","Subject", and "Body" 
+                along with the student name for email to send to the student to remind them to join the session.
+                Else return 'No Match' for all fields, and we will ask user for more information.
+
+                The email should be polite and three-paragraph long. 
+                1. It should tell the user that the instructor is waiting.
+                2. It should provide the Zoom link for the student to join.
+                3. It should thank the student for their attention.
+
+                Please sign-off the email as 'AIClub Coordinators' with email 'coordinator@aiclub.world'.
+                Separate the sign-off from the body with a line of dashes.
+                """
+        llm_response=self.model.with_structured_output(Email).invoke([
+            SystemMessage(content=my_prompt),
+            HumanMessage(content=state['initialMsg']),
+        ])
+        responseToUser= f"""
+        Sorry. I have not built this functionality yet. Here is the email to send for {llm_response.student}, and who to send it to:\n
+        \n
+        To: {llm_response.to}\n
+        Subject: {llm_response.subject}\n
+        Body: {llm_response.body}\n
+        """
+        
+        #print(f"END: provideZoomLink")
+        return {
+
+            'lnode':'Reminder',
             'responseToUser':responseToUser
         }
 
