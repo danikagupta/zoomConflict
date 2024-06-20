@@ -109,13 +109,15 @@ class zoomHandler():
     def frontEnd(self, state: AgentState):
         print(f"START: frontEnd")
         my_prompt=f"""
-                Please classify the user's request.
+                You are getting requests from teachers about an online class conducted on Zoom.
+                Please classify the teacher's request.
                 If a student hasnt joined the session, category is 'Remind'
-                If the user is unable to join a Zoom session due to a conflict, category is 'Conflict'
-                If the user wants you to cancel an existing Zoom session, category is 'Cancel'
-                If the user expresses inability to stop a Zoom session, category is 'Cancel'
-                If the user expresses the need to stop a Zoom session, category is 'Cancel'
-                If the user wants you to create a new Zoom session, category is 'Create'
+                If the teacher is unable to join a Zoom session, category is 'Conflict'
+                If the teacher wants you to cancel an existing Zoom session, category is 'Cancel'
+                If the teacher expresses inability to stop a Zoom session, category is 'Cancel'
+                If the teacher expresses the need to stop a Zoom session, category is 'Cancel'
+                If the teacher wants you to create a new Zoom session, category is 'Create'
+                If the teacher wants to know what sessions are running, category is 'List'
                 Else the category is 'Other'
                 """
         category=self.model.with_structured_output(Category).invoke([
